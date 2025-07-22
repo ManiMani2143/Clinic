@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Building, User, Phone, Mail, FileText, DollarSign, Clock, Bell, Database } from 'lucide-react';
+import { Save, Building, User, Phone, Mail, FileText, DollarSign, Clock, Bell, Database, Plus, X } from 'lucide-react';
 
 interface SettingsProps {
   onSettingsChange: (settings: any) => void;
@@ -18,6 +18,11 @@ export const Settings: React.FC<SettingsProps> = ({ onSettingsChange }) => {
       'Antibiotics', 'Analgesics', 'Antacids', 'Antihistamines', 'Antiseptics',
       'Cardiovascular', 'Dermatology', 'Diabetes', 'Gastroenterology', 'Neurology',
       'Ophthalmology', 'Orthopedics', 'Pediatrics', 'Respiratory', 'Vitamins & Supplements', 'Others'
+    ],
+    medicineNames: [
+      'Paracetamol', 'Aspirin', 'Ibuprofen', 'Amoxicillin', 'Azithromycin',
+      'Omeprazole', 'Metformin', 'Atorvastatin', 'Lisinopril', 'Amlodipine',
+      'Cetirizine', 'Loratadine', 'Dextromethorphan', 'Guaifenesin', 'Salbutamol'
     ],
     taxRate: 0,
     currency: 'INR',
@@ -38,6 +43,7 @@ export const Settings: React.FC<SettingsProps> = ({ onSettingsChange }) => {
   });
 
   const [newCategory, setNewCategory] = useState('');
+  const [newMedicineName, setNewMedicineName] = useState('');
 
   useEffect(() => {
     const savedSettings = localStorage.getItem('clinic_settings');
@@ -49,6 +55,14 @@ export const Settings: React.FC<SettingsProps> = ({ onSettingsChange }) => {
           'Antibiotics', 'Analgesics', 'Antacids', 'Antihistamines', 'Antiseptics',
           'Cardiovascular', 'Dermatology', 'Diabetes', 'Gastroenterology', 'Neurology',
           'Ophthalmology', 'Orthopedics', 'Pediatrics', 'Respiratory', 'Vitamins & Supplements', 'Others'
+        ];
+      }
+      // Ensure medicine names exist, use defaults if not
+      if (!parsedSettings.medicineNames) {
+        parsedSettings.medicineNames = [
+          'Paracetamol', 'Aspirin', 'Ibuprofen', 'Amoxicillin', 'Azithromycin',
+          'Omeprazole', 'Metformin', 'Atorvastatin', 'Lisinopril', 'Amlodipine',
+          'Cetirizine', 'Loratadine', 'Dextromethorphan', 'Guaifenesin', 'Salbutamol'
         ];
       }
       setSettings(parsedSettings);
@@ -75,6 +89,23 @@ export const Settings: React.FC<SettingsProps> = ({ onSettingsChange }) => {
     setSettings({
       ...settings,
       categories: settings.categories.filter(cat => cat !== categoryToRemove)
+    });
+  };
+
+  const addMedicineName = () => {
+    if (newMedicineName.trim() && !settings.medicineNames.includes(newMedicineName.trim())) {
+      setSettings({
+        ...settings,
+        medicineNames: [...settings.medicineNames, newMedicineName.trim()]
+      });
+      setNewMedicineName('');
+    }
+  };
+
+  const removeMedicineName = (medicineToRemove: string) => {
+    setSettings({
+      ...settings,
+      medicineNames: settings.medicineNames.filter(med => med !== medicineToRemove)
     });
   };
 
@@ -334,9 +365,10 @@ export const Settings: React.FC<SettingsProps> = ({ onSettingsChange }) => {
             />
             <button
               onClick={addCategory}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
             >
-              Add
+              <Plus className="w-4 h-4" />
+              <span>Add</span>
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -350,7 +382,49 @@ export const Settings: React.FC<SettingsProps> = ({ onSettingsChange }) => {
                   onClick={() => removeCategory(category)}
                   className="ml-2 text-blue-600 hover:text-blue-800"
                 >
-                  ×
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Medicine Names */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex items-center mb-4">
+          <FileText className="w-6 h-6 text-green-600 mr-2" />
+          <h2 className="text-xl font-semibold text-gray-900">Medicine Names</h2>
+        </div>
+        <div className="space-y-4">
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={newMedicineName}
+              onChange={(e) => setNewMedicineName(e.target.value)}
+              placeholder="Add new medicine name"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button
+              onClick={addMedicineName}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add</span>
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+            {settings.medicineNames.map((medicine, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800"
+              >
+                {medicine}
+                <button
+                  onClick={() => removeMedicineName(medicine)}
+                  className="ml-2 text-green-600 hover:text-green-800"
+                >
+                  <X className="w-3 h-3" />
                 </button>
               </span>
             ))}
