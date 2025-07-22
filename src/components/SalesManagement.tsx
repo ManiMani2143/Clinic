@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Medicine, Customer, Sale } from '../types';
-import { Plus, Trash2, ShoppingCart, User, Package, Receipt, FileText, Search } from 'lucide-react';
+import { Plus, Trash2, ShoppingCart, User, Package, Receipt, FileText, Search, Printer, Download } from 'lucide-react';
 
 interface SalesManagementProps {
   medicines: Medicine[];
@@ -121,6 +121,95 @@ export const SalesManagement: React.FC<SalesManagementProps> = ({
     setShowBill(true);
   };
 
+  const printBill = () => {
+    const printContent = document.getElementById('bill-content');
+    if (printContent) {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Bill - ${currentBill.billNumber}</title>
+              <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .bill-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                .bill-info { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                .bill-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                .bill-table th, .bill-table td { border: 1px solid #000; padding: 8px; text-align: left; }
+                .bill-table th { background-color: #f0f0f0; }
+                .bill-summary { text-align: right; }
+                .bill-footer { text-align: center; margin-top: 20px; border-top: 1px solid #000; padding-top: 10px; }
+              </style>
+            </head>
+            <body>
+              ${printContent.innerHTML}
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+      }
+    }
+  };
+
+  const downloadPDF = async () => {
+    const jsPDF = (await import('jspdf')).default;
+    const html2canvas = (await import('html2canvas')).default;
+    
+    const billContent = document.getElementById('bill-content');
+    if (billContent) {
+      const canvas = await html2canvas(billContent);
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdf = new jsPDF();
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      pdf.save(`bill-${currentBill.billNumber}.pdf`);
+    }
+  };
+
+  const downloadExcel = async () => {
+    const XLSX = (await import('xlsx')).default;
+    
+    const billData = [
+      ['Bill Number', currentBill.billNumber],
+      ['Date', currentBill.date],
+      ['Time', currentBill.time],
+      [''],
+      ['Customer Name', currentBill.customer.name],
+      ['Patient ID', currentBill.customer.patientId],
+      ['Phone', currentBill.customer.phone],
+      ['Address', currentBill.customer.address],
+      [''],
+      ['Item', 'Quantity', 'Price', 'Total'],
+      ...currentBill.items.map((item: any) => [item.name, item.quantity, item.price, item.total]),
+      [''],
+      ['Subtotal', '', '', currentBill.subtotal],
+      ['Tax', '', '', currentBill.tax],
+      ['Consultation', '', '', currentBill.consultationCharge],
+      ['Total Amount', '', '', currentBill.totalAmount]
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet(billData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bill');
+    XLSX.writeFile(wb, `bill-${currentBill.billNumber}.xlsx`);
+  };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -181,9 +270,6 @@ export const SalesManagement: React.FC<SalesManagementProps> = ({
     setShowBill(false);
   };
 
-  const printBill = () => {
-    window.print();
-  };
 
   return (
     <div className="space-y-6">
@@ -202,9 +288,9 @@ export const SalesManagement: React.FC<SalesManagementProps> = ({
       {showBill && currentBill && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
-            <div className="print:block">
+            <div id="bill-content" className="print:block">
               {/* Bill Header */}
-              <div className="text-center mb-6 border-b pb-4">
+              <div className="bill-header text-center mb-6 border-b pb-4">
                 <h1 className="text-2xl font-bold text-gray-900">{currentBill.clinic.name}</h1>
                 <p className="text-gray-600">{currentBill.clinic.doctor}</p>
                 <p className="text-sm text-gray-500">{currentBill.clinic.address}</p>
@@ -213,7 +299,7 @@ export const SalesManagement: React.FC<SalesManagementProps> = ({
               </div>
 
               {/* Bill Info */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bill-info grid grid-cols-2 gap-4 mb-6">
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Bill To:</h3>
                   <p className="text-gray-700">{currentBill.customer.name}</p>
@@ -230,7 +316,7 @@ export const SalesManagement: React.FC<SalesManagementProps> = ({
 
               {/* Items Table */}
               <div className="mb-6">
-                <table className="w-full border-collapse border border-gray-300">
+                <table className="bill-table w-full border-collapse border border-gray-300">
                   <thead>
                     <tr className="bg-gray-50">
                       <th className="border border-gray-300 px-4 py-2 text-left">Item</th>
@@ -253,7 +339,7 @@ export const SalesManagement: React.FC<SalesManagementProps> = ({
               </div>
 
               {/* Bill Summary */}
-              <div className="border-t pt-4">
+              <div className="bill-summary border-t pt-4">
                 <div className="flex justify-end">
                   <div className="w-64">
                     <div className="flex justify-between mb-2">
@@ -277,7 +363,7 @@ export const SalesManagement: React.FC<SalesManagementProps> = ({
               </div>
 
               {/* Footer */}
-              <div className="text-center mt-8 pt-4 border-t text-sm text-gray-500">
+              <div className="bill-footer text-center mt-8 pt-4 border-t text-sm text-gray-500">
                 <p>Thank you for visiting {currentBill.clinic.name}</p>
                 <p>Get well soon!</p>
               </div>
@@ -286,10 +372,25 @@ export const SalesManagement: React.FC<SalesManagementProps> = ({
             {/* Action Buttons */}
             <div className="flex justify-end space-x-4 mt-6 print:hidden">
               <button
-                onClick={printBill}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                onClick={downloadExcel}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
               >
-                Print Bill
+                <Download className="w-4 h-4" />
+                <span>Excel</span>
+              </button>
+              <button
+                onClick={downloadPDF}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>PDF</span>
+              </button>
+              <button
+                onClick={printBill}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print</span>
               </button>
               <button
                 onClick={() => setShowBill(false)}

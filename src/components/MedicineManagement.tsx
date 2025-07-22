@@ -18,6 +18,8 @@ export const MedicineManagement: React.FC<MedicineManagementProps> = ({
   const [showForm, setShowForm] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showNameSuggestions, setShowNameSuggestions] = useState(false);
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -31,11 +33,38 @@ export const MedicineManagement: React.FC<MedicineManagementProps> = ({
     description: ''
   });
 
-  const categories = [
-    'Antibiotics', 'Analgesics', 'Antacids', 'Antihistamines', 'Antiseptics',
-    'Cardiovascular', 'Dermatology', 'Diabetes', 'Gastroenterology', 'Neurology',
-    'Ophthalmology', 'Orthopedics', 'Pediatrics', 'Respiratory', 'Vitamins & Supplements', 'Others'
-  ];
+  // Get settings from localStorage
+  const getSettings = () => {
+    const savedSettings = localStorage.getItem('clinic_settings');
+    if (savedSettings) {
+      return JSON.parse(savedSettings);
+    }
+    return {
+      categories: [
+        'Antibiotics', 'Analgesics', 'Antacids', 'Antihistamines', 'Antiseptics',
+        'Cardiovascular', 'Dermatology', 'Diabetes', 'Gastroenterology', 'Neurology',
+        'Ophthalmology', 'Orthopedics', 'Pediatrics', 'Respiratory', 'Vitamins & Supplements', 'Others'
+      ],
+      medicineNames: [
+        'Paracetamol', 'Aspirin', 'Ibuprofen', 'Amoxicillin', 'Azithromycin',
+        'Omeprazole', 'Metformin', 'Atorvastatin', 'Lisinopril', 'Amlodipine',
+        'Cetirizine', 'Loratadine', 'Dextromethorphan', 'Guaifenesin', 'Salbutamol'
+      ]
+    };
+  };
+
+  const settings = getSettings();
+  const categories = settings.categories || [];
+  const medicineNames = settings.medicineNames || [];
+
+  // Filter suggestions based on input
+  const filteredMedicineNames = medicineNames.filter((name: string) =>
+    name.toLowerCase().includes(formData.name.toLowerCase())
+  );
+
+  const filteredCategories = categories.filter((category: string) =>
+    category.toLowerCase().includes(formData.category.toLowerCase())
+  );
 
   const filteredMedicines = medicines.filter(medicine =>
     medicine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -64,6 +93,8 @@ export const MedicineManagement: React.FC<MedicineManagementProps> = ({
       description: ''
     });
     setShowForm(false);
+    setShowNameSuggestions(false);
+    setShowCategorySuggestions(false);
   };
 
   const handleEdit = (medicine: Medicine) => {
@@ -86,6 +117,8 @@ export const MedicineManagement: React.FC<MedicineManagementProps> = ({
   const handleCancel = () => {
     setShowForm(false);
     setEditingMedicine(null);
+    setShowNameSuggestions(false);
+    setShowCategorySuggestions(false);
     setFormData({
       name: '',
       category: '',
@@ -100,6 +133,15 @@ export const MedicineManagement: React.FC<MedicineManagementProps> = ({
     });
   };
 
+  const handleNameSelect = (name: string) => {
+    setFormData({ ...formData, name });
+    setShowNameSuggestions(false);
+  };
+
+  const handleCategorySelect = (category: string) => {
+    setFormData({ ...formData, category });
+    setShowCategorySuggestions(false);
+  };
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -132,29 +174,64 @@ export const MedicineManagement: React.FC<MedicineManagementProps> = ({
             {editingMedicine ? 'Edit Medicine' : 'Add New Medicine'}
           </h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
               <input
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  setShowNameSuggestions(true);
+                }}
+                onFocus={() => setShowNameSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowNameSuggestions(false), 200)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+              {showNameSuggestions && filteredMedicineNames.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {filteredMedicineNames.map((name: string, index: number) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleNameSelect(name)}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select
+              <input
+                type="text"
                 required
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, category: e.target.value });
+                  setShowCategorySuggestions(true);
+                }}
+                onFocus={() => setShowCategorySuggestions(true)}
+                onBlur={() => setTimeout(() => setShowCategorySuggestions(false), 200)}
+                placeholder="Enter or select category"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select Category</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
+              />
+              {showCategorySuggestions && filteredCategories.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {filteredCategories.map((category: string, index: number) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleCategorySelect(category)}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Manufacturer</label>
